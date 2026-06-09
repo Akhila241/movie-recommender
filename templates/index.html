@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommender</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: white;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container { max-width: 960px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        header h1 {
+            font-size: 36px;
+            background: linear-gradient(90deg, #e50914, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        header p { color: #888; font-size: 15px; }
+
+        /* Search */
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 48px;
+            position: relative;
+        }
+
+        #movie-input {
+            flex: 1;
+            padding: 14px 20px;
+            background: #1a1a1a;
+            border: 1.5px solid #333;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #movie-input:focus { border-color: #e50914; }
+
+        #search-btn {
+            padding: 14px 28px;
+            background: #e50914;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        #search-btn:hover { background: #c40812; }
+        #search-btn:disabled { background: #555; cursor: not-allowed; }
+
+        #suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 120px;
+            background: #1a1a1a;
+            border: 1.5px solid #333;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #ccc;
+            transition: background 0.1s;
+        }
+
+        .suggestion-item:hover { background: #2a2a2a; color: white; }
+
+        /* Popular section */
+        #popular-section { margin-bottom: 48px; }
+
+        #popular-section h2 {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .popular-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+        }
+
+        .popular-card {
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .popular-card:hover { transform: scale(1.05); }
+
+        .popular-card img {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            background: #2a2a2a;
+        }
+
+        .popular-card .no-poster {
+            width: 100%;
+            aspect-ratio: 2/3;
+            background: #2a2a2a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .popular-card .overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            padding: 20px 8px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            text-align: center;
+        }
+
+        /* Results */
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top-color: #e50914;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #error {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #e50914;
+        }
+
+        #results { display: none; }
+
+        /* Searched movie + recommendations layout */
+        .results-layout {
+            display: flex;
+            gap: 32px;
+            align-items: flex-start;
+        }
+
+        /* Searched movie card */
+        .searched-movie {
+            flex-shrink: 0;
+            width: 160px;
+            text-align: center;
+        }
+
+        .searched-movie img,
+        .searched-movie .no-poster {
+            width: 160px;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            border-radius: 10px;
+            background: #2a2a2a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        .searched-movie .label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .searched-movie .title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        /* Arrow */
+        .arrow {
+            font-size: 32px;
+            color: #e50914;
+            align-self: center;
+            flex-shrink: 0;
+        }
+
+        /* Recommendations */
+        .reco-section { flex: 1; }
+
+        .reco-section h2 {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .reco-section h2 span { color: white; }
+
+        .movies-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        .movie-card {
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .movie-card:hover { transform: scale(1.05); }
+
+        .movie-card img {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            background: #2a2a2a;
+        }
+
+        .movie-card .no-poster {
+            width: 100%;
+            aspect-ratio: 2/3;
+            background: #2a2a2a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        /* Match badge */
+        .match-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #e50914;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 7px;
+            border-radius: 99px;
+        }
+
+        .movie-info { padding: 8px 10px 10px; }
+
+        .movie-info .title {
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            line-height: 1.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Movie Recommender</h1>
+            <p>Type a movie you love and discover 5 similar ones instantly</p>
+        </header>
+
+        <div class="search-box">
+            <input type="text" id="movie-input"
+                placeholder="e.g. Inception, Avatar, The Dark Knight..."
+                autocomplete="off">
+            <div id="suggestions"></div>
+            <button id="search-btn" onclick="getRecommendations()">Recommend</button>
+        </div>
+
+        <!-- Popular movies section -->
+        <div id="popular-section">
+            <h2>Popular Movies — Click to explore</h2>
+            <div class="popular-grid" id="popular-grid">
+                <!-- filled by JS -->
+            </div>
+        </div>
+
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Finding movies you'll love...</p>
+        </div>
+
+        <div id="error">
+            <p id="error-msg">Movie not found. Try another title.</p>
+        </div>
+
+        <div id="results">
+    <!-- Searched movie header -->
+    <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+        <div id="searched-poster-container"></div>
+        <div>
+            <p style="color:#888; font-size:13px; text-transform:uppercase; letter-spacing:1px;">Because you liked</p>
+            <h2 style="font-size:24px; font-weight:700;" id="searched-movie"></h2>
+        </div>
+    </div>
+
+    <!-- Recommendations grid -->
+    <div class="movies-grid" id="movies-grid"></div>
+</div>
+
+    <script>
+        const allMovies = {{ movies | tojson }};
+        const input = document.getElementById('movie-input');
+        const suggestions = document.getElementById('suggestions');
+
+        // ── Load popular movies on page load ──────────────────
+        async function loadPopular() {
+            try {
+                const res = await fetch('/popular');
+                const data = await res.json();
+                const grid = document.getElementById('popular-grid');
+                grid.innerHTML = '';
+                data.popular.forEach(movie => {
+                    const card = document.createElement('div');
+                    card.className = 'popular-card';
+                    card.onclick = () => {
+                        input.value = movie.title;
+                        getRecommendations();
+                    };
+                    const posterHTML = movie.poster
+                        ? `<img src="${movie.poster}" alt="${movie.title}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-poster\\'>🎬</div>'">`
+                        : `<div class="no-poster">🎬</div>`;
+                    card.innerHTML = `
+                        ${posterHTML}
+                        <div class="overlay">${movie.title}</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch(e) {
+                document.getElementById('popular-section').style.display = 'none';
+            }
+        }
+
+        loadPopular();
+
+        // ── Autocomplete ───────────────────────────────────────
+        input.addEventListener('input', () => {
+            const query = input.value.toLowerCase().trim();
+            suggestions.innerHTML = '';
+            if (query.length < 2) { suggestions.style.display = 'none'; return; }
+            const matches = allMovies.filter(m => m.toLowerCase().includes(query)).slice(0, 8);
+            if (matches.length === 0) { suggestions.style.display = 'none'; return; }
+            matches.forEach(movie => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = movie;
+                div.onclick = () => {
+                    input.value = movie;
+                    suggestions.style.display = 'none';
+                    getRecommendations();
+                };
+                suggestions.appendChild(div);
+            });
+            suggestions.style.display = 'block';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) suggestions.style.display = 'none';
+        });
+
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') getRecommendations();
+        });
+
+        // ── Get Recommendations ────────────────────────────────
+        async function getRecommendations() {
+            const movie = input.value.trim();
+            if (!movie) return;
+
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('popular-section').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('search-btn').disabled = true;
+            suggestions.style.display = 'none';
+
+            try {
+                const response = await fetch('/recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ movie: movie })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Movie not found');
+                showResults(data);
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-msg').textContent = err.message;
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('popular-section').style.display = 'block';
+            }
+
+            document.getElementById('search-btn').disabled = false;
+        }
+
+        // ── Show Results ───────────────────────────────────────
+        function showResults(data) {
+            document.getElementById('loading').style.display = 'none';
+
+            // Searched movie poster
+            const container = document.getElementById('searched-poster-container');
+if (data.searched_poster) {
+    container.innerHTML = `<img src="${data.searched_poster}" alt="${data.searched_title}" 
+    style="width:80px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;border:2px solid #e50914;"
+    onerror="this.outerHTML='<div style=width:80px;aspect-ratio:2/3;background:#2a2a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;>🎬</div>'">`;
+} else {
+    container.innerHTML = `<div style="width:80px;aspect-ratio:2/3;background:#2a2a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;">🎬</div>`;
+}
+                `<img src="${data.searched_poster}" alt="${data.searched_title}" 
+style="width:80px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;border:2px solid #e50914;"
+onerror="this.outerHTML='<div style=\\'width:80px;aspect-ratio:2/3;background:#2a2a2a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;\\'>🎬</div>'">`
+           document.getElementById('searched-movie').textContent = data.searched_title;
+            // Recommendation cards
+            const grid = document.getElementById('movies-grid');
+            grid.innerHTML = '';
+            data.recommendations.forEach(movie => {
+                const card = document.createElement('div');
+                card.className = 'movie-card';
+                const posterHTML = movie.poster
+                    ? `<img src="${movie.poster}" alt="${movie.title}" loading="lazy" onerror="this.outerHTML='<div class=\\'no-poster\\'>🎬</div>'">`
+                    : `<div class="no-poster">🎬</div>`;
+                card.innerHTML = `
+                    ${posterHTML}
+                    <div class="match-badge">${movie.score}%</div>
+                    <div class="movie-info">
+                        <div class="title">${movie.title}</div>
+                    </div>
+                `;
+                // Click a recommendation to search it
+                card.onclick = () => {
+                    input.value = movie.title;
+                    getRecommendations();
+                };
+                grid.appendChild(card);
+            });
+
+            document.getElementById('results').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
